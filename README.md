@@ -1,43 +1,76 @@
 # Zed
+拉取时间：2025/03/05 10:11 GMT+08:00 Asia/Shanghai
 
-[![CI](https://github.com/zed-industries/zed/actions/workflows/ci.yml/badge.svg)](https://github.com/zed-industries/zed/actions/workflows/ci.yml)
+Zed的Windows版本，编译方法在https://github.com/zed-industries/zed/blob/main/docs/src/development/windows.md
 
-Welcome to Zed, a high-performance, multiplayer code editor from the creators of [Atom](https://github.com/atom/atom) and [Tree-sitter](https://github.com/tree-sitter/tree-sitter).
+注：本次构建补充了，cmake 3.31.6、msvc 143的spectre缓解库。
 
----
+windows构建失败与aws-lc-sys有关，解决方法是注释Cargo.toml里的`debug = "limited"`，解决方法来自[#24791](https://github.com/zed-industries/zed/discussions/24791#discussion-7960013)
 
-### Installation
+我的编译环境（My compilation environment）：
 
-<a href="https://repology.org/project/zed-editor/versions">
-    <img src="https://repology.org/badge/vertical-allrepos/zed-editor.svg?minversion=0.143.5" alt="Packaging status" align="right">
-</a>
+计算机：
+```txt
+rustc 1.85.0 (4d91de4e4 2025-02-17)
 
-On macOS and Linux you can [download Zed directly](https://zed.dev/download) or [install Zed via your local package manager](https://zed.dev/docs/linux#installing-via-a-package-manager).
+cargo 1.85.0 (d73d2caf9 2024-12-31)
 
-Other platforms are not yet available:
+rustup 1.28.0 (6e19fbec7 2025-03-02)
 
-- Windows ([tracking issue](https://github.com/zed-industries/zed/issues/5394))
-- Web ([tracking issue](https://github.com/zed-industries/zed/issues/5396))
+处理器 12th Gen Intel(R) Core(TM) i9-12900H 2.50 GHz
 
-### Developing Zed
+机带 RAM 32.0 GB (31.7 GB 可用)
 
-- [Building Zed for macOS](./docs/src/development/macos.md)
-- [Building Zed for Linux](./docs/src/development/linux.md)
-- [Building Zed for Windows](./docs/src/development/windows.md)
-- [Running Collaboration Locally](./docs/src/development/local-collaboration.md)
+系统类型 64 位操作系统, 基于 x64 的处理器
 
-### Contributing
+版本 Windows 11 专业版
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for ways you can contribute to Zed.
+版本 23H2
 
-Also... we're hiring! Check out our [jobs](https://zed.dev/jobs) page for open roles.
+操作系统版本 22631.4974
 
-### Licensing
+体验 Windows 功能体验包 1000.22700.1074.0
+```
 
-License information for third party dependencies must be correctly provided for CI to pass.
+IDE（VS Code / RustRover）：
 
-We use [`cargo-about`](https://github.com/EmbarkStudios/cargo-about) to automatically comply with open source licenses. If CI is failing, check the following:
-
-- Is it showing a `no license specified` error for a crate you've created? If so, add `publish = false` under `[package]` in your crate's Cargo.toml.
-- Is the error `failed to satisfy license requirements` for a dependency? If so, first determine what license the project has and whether this system is sufficient to comply with this license's requirements. If you're unsure, ask a lawyer. Once you've verified that this system is acceptable add the license's SPDX identifier to the `accepted` array in `script/licenses/zed-licenses.toml`.
-- Is `cargo-about` unable to find the license for a dependency? If so, add a clarification field at the end of `script/licenses/zed-licenses.toml`, as specified in the [cargo-about book](https://embarkstudios.github.io/cargo-about/cli/generate/config.html#crate-configuration).
+VS Code：
+```txt
+版本: 1.97.2 (user setup)
+提交: e54c774e0add60467559eb0d1e229c6452cf8447
+日期: 2025-02-12T23:20:35.343Z
+Electron: 32.2.7
+ElectronBuildId: 10982180
+Chromium: 128.0.6613.186
+Node.js: 20.18.1
+V8: 12.8.374.38-electron.0
+OS: Windows_NT x64 10.0.22631
+```
+RustRover：
+```txt
+RustRover 2025.1 EAP
+Build #RR-251.23774.2, built on March 4, 2025
+Source revision: e1b2533d54b2d
+授权给 RustRover EAP user: Tajang Wu
+到期日期: April 3, 2025
+Runtime version: 21.0.6+9-b895.97 amd64 (JCEF 122.1.9)
+VM: OpenJDK 64-Bit Server VM by JetBrains s.r.o.
+Toolkit: sun.awt.windows.WToolkit
+Windows 11.0
+GC: G1 Young Generation, G1 Concurrent GC, G1 Old Generation
+Memory: 1536M
+Cores: 20
+Registry:
+  ide.balloon.shadow.size=0
+  debugger.attach.dialog.enabled=true
+  suggest.all.run.configurations.from.context=true
+  ide.experimental.ui=true
+  terminal.new.ui.show.promotion=true
+  transferSettings.vscode.onlyCargoToml=true
+  llm.ai.assistant.toolwindow.activation.on.start=false
+Non-Bundled Plugins:
+  intellij-scheme (0.1.10)
+  com.wakatime.intellij.plugin (15.0.3)
+  net.seesharpsoft.intellij.plugins.csv (4.0.2)
+  com.mallowigi (101.2.0)
+```
