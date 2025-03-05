@@ -1,5 +1,5 @@
 # Zed
-拉取时间：2025/03/05 10:11 GMT+08:00 Asia/Shanghai
+拉取时间：2025/03/05 11:00 GMT+08:00 Asia/Shanghai
 
 Zed的Windows版本，编译方法在https://github.com/zed-industries/zed/blob/main/docs/src/development/windows.md
 
