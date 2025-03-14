@@ -1,3 +1,5 @@
+permissions:
+  actions: write
 name: Sync and Release Upstream
 
 on:
