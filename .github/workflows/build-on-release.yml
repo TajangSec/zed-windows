@@ -43,6 +43,7 @@ jobs:
     
     steps:
     - name: Checkout repository
+      env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       uses: actions/checkout@v4
       with:
