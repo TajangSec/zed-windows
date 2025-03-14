@@ -48,7 +48,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         fetch-depth: 0
-        token: ${{ secrets.PAT }}
+        # token: ${{ secrets.PAT }}
 
     - name: Configure upstream
       run: git remote add upstream https://github.com/zed-industries/zed.git
