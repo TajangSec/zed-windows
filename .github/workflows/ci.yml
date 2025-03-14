@@ -1,5 +1,6 @@
 permissions:
   contents: write  # 允许推送代码到仓库
+  actions: write
 name: CI
 
 on:
