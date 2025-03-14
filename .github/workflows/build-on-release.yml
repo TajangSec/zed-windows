@@ -47,7 +47,7 @@ jobs:
     - name: Checkout repository
       env:
         token: ${{ secrets.GITHUB_TOKEN }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.PAT }}
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
