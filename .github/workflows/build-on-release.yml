@@ -1,0 +1,76 @@
+name: Check and Build on New Release
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # 每小时运行一次
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.parse_tag.outputs.tag }}
+      is_new: ${{ steps.check_new.outputs.is_new }}
+    steps:
+    - name: Checkout fork
+      uses: actions/checkout@v2
+    - name: Get last built release
+      id: last_built
+      run: |
+        if [ -f last_built_release.txt ]; then
+          echo "::set-output name=tag::$(cat last_built_release.txt)"
+        else
+          echo "::set-output name=tag::none"
+        fi
+    - name: Get latest release from original
+      id: latest_release
+      uses: octokit/request-action@v2.x
+      with:
+        route: GET /repos/zed-industries/zed/releases/latest
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Parse latest release tag
+      id: parse_tag
+      run: |
+        echo "::set-output name=tag::$(echo ${{ steps.latest_release.outputs.data }} | jq -r '.tag_name')"
+    - name: Check if new release
+      id: check_new
+      run: |
+        if [ "${{ steps.parse_tag.outputs.tag }}" != "${{ steps.last_built.outputs.tag }}" ]; then
+          echo "::set-output name=is_new::true"
+        else
+          echo "::set-output name=is_new::false"
+        fi
+
+  build:
+    needs: check
+    if: needs.check.outputs.is_new == 'true'
+    runs-on: windows-latest
+    steps:
+    - name: Checkout specific tag from original
+      uses: actions/checkout@v2
+      with:
+        repository: zed-industries/zed
+        ref: ${{ needs.check.outputs.tag }}
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: x86_64-pc-windows-msvc
+    - name: Build
+      run: cargo build --release --target x86_64-pc-windows-msvc
+
+  update:
+    needs: [check, build]
+    if: needs.check.outputs.is_new == 'true'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout fork
+      uses: actions/checkout@v2
+    - name: Update last built release
+      run: |
+        echo ${{ needs.check.outputs.tag }} > last_built_release.txt
+        git config user.name "GitHub Action"
+        git config user.email "action@github.com"
+        git add last_built_release.txt
+        git commit -m "Update last built release to ${{ needs.check.outputs.tag }}"
+        git push
