@@ -38,28 +38,28 @@ jobs:
         fi
 
   sync-repository:
-  name: Sync Repository
-  needs: check-updates
-  if: needs.check-updates.outputs.should_proceed == 'true'
-  runs-on: ubuntu-latest
-  
-  steps:
-  - name: Checkout repository
-    uses: actions/checkout@v4
-    with:
-      fetch-depth: 0
-      persist-credentials: true  # 保留 GITHUB_TOKEN 凭证
+    name: Sync Repository
+    needs: check-updates
+    if: needs.check-updates.outputs.should_proceed == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        persist-credentials: true  # 保留 GITHUB_TOKEN 凭证
 
-  - name: Configure upstream
-    run: git remote add upstream https://github.com/zed-industries/zed.git
+    - name: Configure upstream
+      run: git remote add upstream https://github.com/zed-industries/zed.git
 
-  - name: Fetch upstream tags
-    run: git fetch upstream --tags
+    - name: Fetch upstream tags
+      run: git fetch upstream --tags
 
-  - name: Reset to upstream release
-    run: |
-      git checkout -B main ${{ needs.check-updates.outputs.new_version }}
-      git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main --force
+    - name: Reset to upstream release
+      run: |
+        git checkout -B main ${{ needs.check-updates.outputs.new_version }}
+        git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main --force
 
   build-windows:
     name: Build Windows
