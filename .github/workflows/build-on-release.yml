@@ -1,122 +1,124 @@
-name: Auto Update and Release
+permissions:
+  contents: write
+name: Sync and Release Upstream
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # 每天午夜检查更新
-  workflow_dispatch:      # 允许手动触发
+    - cron: '0 0 * * *'  # 每天UTC午夜检查更新
+  workflow_dispatch:     # 允许手动触发
 
 jobs:
-  check-update:
+  check-updates:
+    name: Check for Updates
     runs-on: ubuntu-latest
     outputs:
-      should_update: ${{ steps.check.outputs.should_update }}
-      new_version: ${{ steps.check.outputs.new_version }}
+      new_version: ${{ steps.get_source_ver.outputs.source_version }}
+      should_proceed: ${{ steps.compare_versions.outputs.should_proceed }}
+    
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Get upstream version
+      id: get_source_ver
+      run: |
+        source_ver=$(curl -s https://api.github.com/repos/zed-industries/zed/releases/latest | jq -r .tag_name)
+        echo "source_version=$source_ver" >> $GITHUB_OUTPUT
 
-      - name: Get latest release from source repo
-        id: source_release
-        uses: octokit/request-action@v3.1.0
-        with:
-          route: GET /repos/zed-industries/zed/releases/latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Get current version
+      id: get_current_ver
+      run: |
+        current_ver=$(curl -f -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r .tag_name || echo "v0.0.0")
+        echo "current_version=$current_ver" >> $GITHUB_OUTPUT
 
-      - name: Read current version
-        id: current_version
-        run: |
-          if [ -f version.txt ]; then
-            echo "::set-output name=version::$(cat version.txt)"
-          else
-            echo "::set-output name=version::0.0.0"
-          fi
+    - name: Compare versions
+      id: compare_versions
+      run: |
+        if [ "${{ steps.get_source_ver.outputs.source_version }}" != "${{ steps.get_current_ver.outputs.current_version }}" ]; then
+          echo "should_proceed=true" >> $GITHUB_OUTPUT
+        else
+          echo "should_proceed=false" >> $GITHUB_OUTPUT
+        fi
 
-      - name: Check version
-        id: check
-        run: |
-          SOURCE_VERSION="${{ steps.source_release.outputs.data.tag_name }}"
-          CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
-          echo "Source version: $SOURCE_VERSION"
-          echo "Current version: $CURRENT_VERSION"
-          if [ "$SOURCE_VERSION" != "$CURRENT_VERSION" ]; then
-            echo "::set-output name=should_update::true"
-            echo "::set-output name=new_version::$SOURCE_VERSION"
-          else
-            echo "::set-output name=should_update::false"
-          fi
+  sync-repository:
+  name: Sync Repository
+  needs: check-updates
+  if: needs.check-updates.outputs.should_proceed == 'true'
+  runs-on: ubuntu-latest
+  
+  steps:
+  - name: Checkout repository
+    uses: actions/checkout@v4
+    with:
+      fetch-depth: 0
+      persist-credentials: true  # 保留 GITHUB_TOKEN 凭证
 
-  update-and-build:
+  - name: Configure upstream
+    run: git remote add upstream https://github.com/zed-industries/zed.git
+
+  - name: Fetch upstream tags
+    run: git fetch upstream --tags
+
+  - name: Reset to upstream release
+    run: |
+      git checkout -B main ${{ needs.check-updates.outputs.new_version }}
+      git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main --force
+
+  build-windows:
+    name: Build Windows
+    needs: sync-repository
     runs-on: windows-latest
-    needs: check-update
-    if: needs.check-update.outputs.should_update == 'true'
+    
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Set upstream remote
-        run: git remote add upstream https://github.com/zed-industries/zed.git
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        targets: x86_64-pc-windows-msvc
 
-      - name: Pull upstream changes
-        run: |
-          git fetch upstream
-          git merge upstream/main --no-edit
-          git push origin main
+    - name: Build release
+      run: cargo build --release --target x86_64-pc-windows-msvc
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          override: true
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: windows-bin
+        path: target/x86_64-pc-windows-msvc/release/zed.exe
 
-      - name: Build Windows binary
-        run: |
-          cargo build --release --locked
-          mkdir release
-          copy target\release\zed.exe release\
-          7z a zed-${{ needs.check-update.outputs.new_version }}-windows-x64.zip release\zed.exe
-
-      - name: Save version file
-        run: echo ${{ needs.check-update.outputs.new_version }} > version.txt
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: zed-release
-          path: |
-            zed-${{ needs.check-update.outputs.new_version }}-windows-x64.zip
-            version.txt
-
-  release:
+  create-release:
+    name: Create Release
+    needs: [check-updates, build-windows]
+    if: needs.check-updates.outputs.should_proceed == 'true'
     runs-on: ubuntu-latest
-    needs: update-and-build
-    if: needs.check-update.outputs.should_update == 'true'
+    
     steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: zed-release
+    - name: Download artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: windows-bin
+        path: dist
 
-      - name: Create Release
-        id: create_release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ needs.check-update.outputs.new_version }}
-          name: Release ${{ needs.check-update.outputs.new_version }}
-          body: |
-            Automated release for version ${{ needs.check-update.outputs.new_version }}
-          files: |
-            zed-${{ needs.check-update.outputs.new_version }}-windows-x64.zip
-            version.txt
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Create release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ needs.check-updates.outputs.new_version }}
+        release_name: "Version ${{ needs.check-updates.outputs.new_version }}"
+        body: |
+          Automated build from upstream release:
+          https://github.com/zed-industries/zed/releases/tag/${{ needs.check-updates.outputs.new_version }}
+        draft: false
+        prerelease: false
 
-      - name: Commit version update
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add version.txt
-          git commit -m "Update version to ${{ needs.check-update.outputs.new_version }}"
-          git push origin main
+    - name: Upload asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: dist/zed.exe
+        asset_name: zed-windows-${{ needs.check-updates.outputs.new_version }}.exe
+        asset_content_type: application/octet-stream
