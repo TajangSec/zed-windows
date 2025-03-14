@@ -3,6 +3,7 @@ name: Check and Build on New Release
 on:
   schedule:
     - cron: '0 * * * *'  # 每小时运行一次
+  workflow_dispatch:
 
 jobs:
   check:
