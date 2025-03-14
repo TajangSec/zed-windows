@@ -1,76 +1,122 @@
-name: Check and Build on New Release
+name: Auto Update and Release
 
 on:
   schedule:
-    - cron: '0 * * * *'  # 每小时运行一次
-  workflow_dispatch:
+    - cron: '0 0 * * *'  # 每天午夜检查更新
+  workflow_dispatch:      # 允许手动触发
+
 jobs:
-  check:
+  check-update:
     runs-on: ubuntu-latest
     outputs:
-      tag: ${{ steps.parse_tag.outputs.tag }}
-      is_new: ${{ steps.check_new.outputs.is_new }}
+      should_update: ${{ steps.check.outputs.should_update }}
+      new_version: ${{ steps.check.outputs.new_version }}
     steps:
-      - name: Checkout fork
-        uses: actions/checkout@v2
-      - name: Get last built release
-        id: last_built
-        run: |
-          if [ -f last_built_release.txt ]; then
-            echo "tag=$(cat last_built_release.txt)" >> $GITHUB_OUTPUT
-          else
-            echo "tag=none" >> $GITHUB_OUTPUT
-          fi
-      - name: Get latest release from original
-        id: latest_release
-        uses: octokit/request-action@v2.x
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get latest release from source repo
+        id: source_release
+        uses: octokit/request-action@v3.1.0
         with:
           route: GET /repos/zed-industries/zed/releases/latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Parse latest release tag
-        id: parse_tag
+
+      - name: Read current version
+        id: current_version
         run: |
-          echo "tag=$(echo ${{ steps.latest_release.outputs.data }} | jq -r '.tag_name')" >> $GITHUB_OUTPUT
-      - name: Check if new release
-        id: check_new
-        run: |
-          if [ "${{ steps.parse_tag.outputs.tag }}" != "${{ steps.last_built.outputs.tag }}" ]; then
-            echo "is_new=true" >> $GITHUB_OUTPUT
+          if [ -f version.txt ]; then
+            echo "::set-output name=version::$(cat version.txt)"
           else
-            echo "is_new=false" >> $GITHUB_OUTPUT
+            echo "::set-output name=version::0.0.0"
           fi
 
-  build:
-    needs: check
-    if: needs.check.outputs.is_new == 'true'
+      - name: Check version
+        id: check
+        run: |
+          SOURCE_VERSION="${{ steps.source_release.outputs.data.tag_name }}"
+          CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
+          echo "Source version: $SOURCE_VERSION"
+          echo "Current version: $CURRENT_VERSION"
+          if [ "$SOURCE_VERSION" != "$CURRENT_VERSION" ]; then
+            echo "::set-output name=should_update::true"
+            echo "::set-output name=new_version::$SOURCE_VERSION"
+          else
+            echo "::set-output name=should_update::false"
+          fi
+
+  update-and-build:
     runs-on: windows-latest
+    needs: check-update
+    if: needs.check-update.outputs.should_update == 'true'
     steps:
-      - name: Checkout specific tag
-        uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          repository: zed-industries/zed
-          ref: ${{ needs.check.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Set upstream remote
+        run: git remote add upstream https://github.com/zed-industries/zed.git
+
+      - name: Pull upstream changes
+        run: |
+          git fetch upstream
+          git merge upstream/main --no-edit
+          git push origin main
+
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-          target: x86_64-pc-windows-msvc
-      - name: Build
-        run: cargo build --release --target x86_64-pc-windows-msvc
+          override: true
 
-  update:
-    needs: [check, build]
-    if: needs.check.outputs.is_new == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout fork
-        uses: actions/checkout@v2
-      - name: Update last built release
+      - name: Build Windows binary
         run: |
-          echo ${{ needs.check.outputs.tag }} > last_built_release.txt
-          git config user.name "GitHub Action"
-          git config user.email "action@github.com"
-          git add last_built_release.txt
-          git commit -m "Update last built release to ${{ needs.check.outputs.tag }}"
-          git push
+          cargo build --release --locked
+          mkdir release
+          copy target\release\zed.exe release\
+          7z a zed-${{ needs.check-update.outputs.new_version }}-windows-x64.zip release\zed.exe
+
+      - name: Save version file
+        run: echo ${{ needs.check-update.outputs.new_version }} > version.txt
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zed-release
+          path: |
+            zed-${{ needs.check-update.outputs.new_version }}-windows-x64.zip
+            version.txt
+
+  release:
+    runs-on: ubuntu-latest
+    needs: update-and-build
+    if: needs.check-update.outputs.should_update == 'true'
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: zed-release
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.check-update.outputs.new_version }}
+          name: Release ${{ needs.check-update.outputs.new_version }}
+          body: |
+            Automated release for version ${{ needs.check-update.outputs.new_version }}
+          files: |
+            zed-${{ needs.check-update.outputs.new_version }}-windows-x64.zip
+            version.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit version update
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add version.txt
+          git commit -m "Update version to ${{ needs.check-update.outputs.new_version }}"
+          git push origin main
