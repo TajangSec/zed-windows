@@ -44,11 +44,12 @@ jobs:
     steps:
     - name: Checkout repository
       env:
+        token: ${{ secrets.PAT }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        token: ${{ secrets.PAT }}
+        # token: ${{ secrets.PAT }}
 
     - name: Configure upstream
       run: git remote add upstream https://github.com/zed-industries/zed.git
