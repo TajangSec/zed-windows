@@ -1,3 +1,6 @@
+permissions:
+  contents: write  # 允许推送代码到仓库
+  workflows: write  # 允许修改工作流文件
 name: CI
 
 on:
