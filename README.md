@@ -1,40 +1,62 @@
 # Zed
+拉取时间：2025/08/23 12:37 GMT+08:00 Asia/Shanghai
 
-[![Zed](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/zed-industries/zed/main/assets/badge/v0.json)](https://zed.dev)
-[![CI](https://github.com/zed-industries/zed/actions/workflows/ci.yml/badge.svg)](https://github.com/zed-industries/zed/actions/workflows/ci.yml)
+Zed的Windows版本，编译方法在https://github.com/zed-industries/zed/blob/main/docs/src/development/windows.md
 
-Welcome to Zed, a high-performance, multiplayer code editor from the creators of [Atom](https://github.com/atom/atom) and [Tree-sitter](https://github.com/tree-sitter/tree-sitter).
 
----
 
-### Installation
+windows构建失败与aws-lc-sys有关，解决方法是注释Cargo.toml里的`debug = "limited"`，解决方法来自[#24791](https://github.com/zed-industries/zed/discussions/24791#discussion-7960013)
 
-On macOS and Linux you can [download Zed directly](https://zed.dev/download) or [install Zed via your local package manager](https://zed.dev/docs/linux#installing-via-a-package-manager).
+这次遇到一个 `Failed to find fxc.exe`错误，只需要把windows sdk加入到环境变量即可
+我的编译环境（My compilation environment）：
 
-Other platforms are not yet available:
+计算机：
+```txt
+rustc 1.89.0 (29483883e 2025-08-04)
 
-- Windows ([tracking issue](https://github.com/zed-industries/zed/issues/5394))
-- Web ([tracking issue](https://github.com/zed-industries/zed/issues/5396))
+cargo 1.89.0 (c24e10642 2025-06-23)
 
-### Developing Zed
+rustup 1.28.2 (e4f3ad6f8 2025-04-28)
 
-- [Building Zed for macOS](./docs/src/development/macos.md)
-- [Building Zed for Linux](./docs/src/development/linux.md)
-- [Building Zed for Windows](./docs/src/development/windows.md)
-- [Running Collaboration Locally](./docs/src/development/local-collaboration.md)
+处理器 12th Gen Intel(R) Core(TM) i9-12900H 2.50 GHz
 
-### Contributing
+机带 RAM 32.0 GB (31.7 GB 可用)
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for ways you can contribute to Zed.
+系统类型 64 位操作系统, 基于 x64 的处理器
 
-Also... we're hiring! Check out our [jobs](https://zed.dev/jobs) page for open roles.
+版本 Windows 11 专业版
 
-### Licensing
+版本 24H2
 
-License information for third party dependencies must be correctly provided for CI to pass.
+操作系统版本 26100.4770
 
-We use [`cargo-about`](https://github.com/EmbarkStudios/cargo-about) to automatically comply with open source licenses. If CI is failing, check the following:
+Windows 功能体验包 1000.26100.197.0
+```
 
-- Is it showing a `no license specified` error for a crate you've created? If so, add `publish = false` under `[package]` in your crate's Cargo.toml.
-- Is the error `failed to satisfy license requirements` for a dependency? If so, first determine what license the project has and whether this system is sufficient to comply with this license's requirements. If you're unsure, ask a lawyer. Once you've verified that this system is acceptable add the license's SPDX identifier to the `accepted` array in `script/licenses/zed-licenses.toml`.
-- Is `cargo-about` unable to find the license for a dependency? If so, add a clarification field at the end of `script/licenses/zed-licenses.toml`, as specified in the [cargo-about book](https://embarkstudios.github.io/cargo-about/cli/generate/config.html#crate-configuration).
+IDE（VS Code / RustRover）：
+
+VS Code：
+```txt
+版本: 1.103.2 (user setup)
+提交: 6f17636121051a53c88d3e605c491d22af2ba755
+日期: 2025-08-20T16:45:34.255Z
+Electron: 37.2.3
+ElectronBuildId: 12035395
+Chromium: 138.0.7204.100
+Node.js: 22.17.0
+V8: 13.8.500258-electron.0
+OS: Windows_NT x64 10.0.26100
+```
+RustRover：
+```txt
+RustRover 2025.2
+Build #RR-252.23892.452, built on August 5, 2025
+Source revision: 46d96de2d5732
+Runtime version: 21.0.7+6-b1038.58 amd64 (JCEF 122.1.9)
+VM: OpenJDK 64-Bit Server VM by JetBrains s.r.o.
+Toolkit: sun.awt.windows.WToolkit
+Windows 11.0
+GC: G1 Young Generation, G1 Concurrent GC, G1 Old Generation
+Memory: 2048M
+Cores: 20
+```
